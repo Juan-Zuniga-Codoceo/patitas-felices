@@ -188,3 +188,36 @@ export async function updateProduct(id: string, data: ProductPayload) {
         return { success: false, error: error.message || "Error al actualizar el producto" };
     }
 }
+
+export async function deleteProduct(id: string) {
+    try {
+        await prisma.productVariant.deleteMany({ where: { productId: id } });
+        await prisma.productImage.deleteMany({ where: { productId: id } });
+        await prisma.review.deleteMany({ where: { productId: id } });
+        await prisma.product.delete({ where: { id } });
+        revalidatePath("/admin/products");
+        return { success: true };
+    } catch (error: any) {
+        console.error("[deleteProduct]", error);
+        return { success: false, error: error.message || "Error al eliminar" };
+    }
+}
+
+export async function deleteProductsBulk(ids: string[]) {
+    try {
+        const where = ids.length > 0 ? { productId: { in: ids } } : {};
+        const productWhere = ids.length > 0 ? { id: { in: ids } } : {};
+        const reviewWhere = ids.length > 0 ? { productId: { in: ids } } : {};
+
+        await prisma.productVariant.deleteMany({ where });
+        await prisma.productImage.deleteMany({ where });
+        await prisma.review.deleteMany({ where: reviewWhere });
+        const result = await prisma.product.deleteMany({ where: productWhere });
+
+        revalidatePath("/admin/products");
+        return { success: true, deleted: result.count };
+    } catch (error: any) {
+        console.error("[deleteProductsBulk]", error);
+        return { success: false, error: error.message || "Error al eliminar en lote" };
+    }
+}

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Edit2, Trash2, Search, Filter, CheckSquare, Trash } from "lucide-react";
+import { deleteProduct, deleteProductsBulk } from "./actions";
 
 type Product = {
     id: string;
@@ -72,14 +73,14 @@ export default function ProductsTable({ products }: { products: Product[] }) {
         if (!confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) return;
         setDeleting(id);
         try {
-            const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
-            if (res.ok) {
+            const result = await deleteProduct(id);
+            if (result.success) {
                 router.refresh();
             } else {
-                alert("Error al eliminar el producto.");
+                alert(`Error: ${result.error}`);
             }
         } catch {
-            alert("Error de red al intentar eliminar.");
+            alert("Error al intentar eliminar.");
         } finally {
             setDeleting(null);
         }
@@ -92,19 +93,15 @@ export default function ProductsTable({ products }: { products: Product[] }) {
 
         setBulkWorking(true);
         try {
-            const res = await fetch("/api/products/bulk", {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ids }),
-            });
-            if (res.ok) {
+            const result = await deleteProductsBulk(ids);
+            if (result.success) {
                 setSelected(new Set());
                 router.refresh();
             } else {
-                alert("Error al eliminar los productos seleccionados.");
+                alert(`Error: ${result.error}`);
             }
         } catch {
-            alert("Error de red al intentar eliminar en lote.");
+            alert("Error al intentar eliminar en lote.");
         } finally {
             setBulkWorking(false);
         }
