@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Provider {
+  id         String      @id @default(cuid())
+  name       String
+  type       String      @default("Local") // Local | Dropi
+  email      String?
+  phone      String?
+  apiKey     String?
+  products   Product[]
+  orderItems OrderItem[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("ADMIN")
+  reviews   Review[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id                 String   @id @default(cuid())
+  name               String
+  description        String?
+  seoMetaDescription String?
+  price              Float
+  imageUrl    String?
+  image       String?
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id])
+  allowsCOD   Boolean  @default(false)
+  providerType String  @default("Dropi") // Dropi | External
+  sku         String?
+  dropiId     String?
+  category    String   @default("Dog") // Dog | Cat | Both
+  costPrice   Float?
+  sellPrice   Float?
+  weight      Float?
+  length      Float?
+  width       Float?
+  height      Float?
+  rating      Float    @default(0)
+  reviewsCount Int     @default(0)
+  images      ProductImage[]
+  variants    ProductVariant[]
+  reviews     Review[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Review {
+  id                 String   @id @default(cuid())
+  rating             Int
+  comment            String
+  adminReply         String?
+  repliedAt          DateTime?
+  isVerifiedPurchase Boolean  @default(false)
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String?
+  order     Int      @default(0)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model ProductVariant {
+  id              String   @id @default(cuid())
+  color           String
+  stock           Int      @default(0)
+  priceAdjustment Float    @default(0)
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  customerName    String
+  customerEmail   String
+  customerRUT     String
+  customerPhone   String
+  customerAddress String
+  comuna          String
+  shippingCost    Float       @default(0)
+  totalPrice      Float
+  paymentStatus   String      @default("PENDING") // PENDING | PAID | FAILED
+  status          String      @default("CREATED")  // CREATED | PROCESSING | SHIPPED | DELIVERED
+  mpPreferenceId  String?
+  mpPaymentId     String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id])
+  productId       String
+  productName     String
+  quantity        Int
+  priceAtPurchase Float
+  selectedColor   String?
+  trackingCode    String?
+  providerId      String
+  provider        Provider @relation(fields: [providerId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
