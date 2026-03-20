@@ -88,7 +88,7 @@ function itemsTable(items: OrderItemEmail[]) {
 
 // ─── Email 1: Confirmación de Compra ─────────────────────────────────────────
 
-export async function sendOrderConfirmation(order: OrderEmail, pdfBuffer?: Buffer) {
+export async function sendOrderConfirmation(order: OrderEmail, pdfBuffer?: Buffer, isCOD = false) {
   if (!process.env.RESEND_API_KEY) {
     console.warn("[Email] RESEND_API_KEY no configurada. Saltando envío de email.");
     return;
@@ -96,9 +96,31 @@ export async function sendOrderConfirmation(order: OrderEmail, pdfBuffer?: Buffe
 
   const subtotal = order.totalPrice - order.shippingCost;
 
+  const headerText = isCOD
+    ? `¡Tu pedido está confirmado! 👾`
+    : `¡Tu pedido fue confirmado! 🎉`;
+
+  const subText = isCOD
+    ? `Hola <strong>${order.customerName}</strong>, tu pedido Contra Entrega ha sido registrado.`
+    : `Hola <strong>${order.customerName}</strong>, recibimos tu pago con éxito.`;
+
+  const actionBlock = isCOD
+    ? `<div style="background:#fff7ed;border:2px solid #FF9800;border-radius:14px;padding:20px 24px;margin:24px 0;text-align:center;">
+        <div style="font-size:36px;margin-bottom:8px;">💵</div>
+        <p style="margin:0;font-size:17px;font-weight:900;color:#92400e;">Ten el dinero exacto listo</p>
+        <p style="margin:8px 0 0;font-size:14px;color:#b45309;">cuando el repartidor llegue a tu domicilio.</p>
+        <p style="margin:12px 0 0;font-size:20px;font-weight:900;color:#FF9800;">Total: $${order.totalPrice.toLocaleString("es-CL")} CLP</p>
+      </div>`
+    : `<div style="text-align:center;margin:32px 0;">
+        <a href="${BASE_URL}/order/${order.id}/tracking" target="_blank"
+           style="display:inline-block;background:#5FAFE3;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:16px 36px;border-radius:14px;box-shadow:0 4px 14px rgba(95,175,227,0.4);">
+          📍 SEGUIR MI PEDIDO
+        </a>
+      </div>`;
+
   const html = base(`
-        <h2 style="margin:0 0 4px;font-size:26px;font-weight:900;color:#1e293b;">¡Tu pedido fue confirmado! 🎉</h2>
-        <p style="margin:0 0 24px;color:#64748b;font-size:15px;">Hola <strong>${order.customerName}</strong>, recibimos tu pago con éxito.</p>
+        <h2 style="margin:0 0 4px;font-size:26px;font-weight:900;color:#1e293b;">${headerText}</h2>
+        <p style="margin:0 0 24px;color:#64748b;font-size:15px;">${subText}</p>
 
         <div style="background:#f0f9ff;border-left:4px solid #5FAFE3;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
           <p style="margin:0;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;font-weight:700;">Número de Orden</p>
@@ -120,25 +142,22 @@ export async function sendOrderConfirmation(order: OrderEmail, pdfBuffer?: Buffe
             <td style="font-size:13px;color:#1e293b;font-weight:600;text-align:right;">$${order.shippingCost.toLocaleString("es-CL")}</td>
           </tr>
           <tr>
-            <td style="font-size:16px;color:#1e293b;font-weight:900;padding:12px 0 4px;border-top:1px solid #e2e8f0;">Total pagado</td>
-            <td style="font-size:16px;color:#5FAFE3;font-weight:900;text-align:right;padding:12px 0 4px;border-top:1px solid #e2e8f0;">$${order.totalPrice.toLocaleString("es-CL")}</td>
+            <td style="font-size:${isCOD ? "14px" : "16px"};color:#1e293b;font-weight:900;padding:12px 0 4px;border-top:1px solid #e2e8f0;">${isCOD ? "Total a pagar en efectivo" : "Total pagado"}</td>
+            <td style="font-size:${isCOD ? "14px" : "16px"};color:${isCOD ? "#FF9800" : "#5FAFE3"};font-weight:900;text-align:right;padding:12px 0 4px;border-top:1px solid #e2e8f0;">$${order.totalPrice.toLocaleString("es-CL")}</td>
           </tr>
         </table>
 
-        <div style="text-align:center;margin:32px 0;">
-          <a href="${BASE_URL}/order/${order.id}/tracking" target="_blank"
-             style="display:inline-block;background:#5FAFE3;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:16px 36px;border-radius:14px;box-shadow:0 4px 14px rgba(95,175,227,0.4);">
-            📍 SEGUIR MI PEDIDO
-          </a>
-        </div>
+        ${actionBlock}
 
         <div style="background:#fff7ed;border-radius:12px;padding:16px 20px;margin-top:24px;">
           <p style="margin:0;font-size:13px;color:#92400e;">🚚 <strong>Dirección de despacho:</strong> ${order.customerAddress}, ${order.comuna}</p>
-          <p style="margin:8px 0 0;font-size:12px;color:#b45309;">Recibirás un correo con el código de seguimiento cuando tu pedido sea despachado.</p>
+          <p style="margin:8px 0 0;font-size:12px;color:#b45309;">${isCOD
+      ? "El repartidor se comunicará contigo antes de la entrega."
+      : "Recibirás un correo con el código de seguimiento cuando tu pedido sea despachado."
+    }</p>
         </div>
     `);
 
-  // Adjuntar la boleta PDF si existe
   const attachments = pdfBuffer ? [
     {
       filename: `Boleta_PatitasFelices_#${order.id.slice(0, 8).toUpperCase()}.pdf`,
@@ -149,7 +168,9 @@ export async function sendOrderConfirmation(order: OrderEmail, pdfBuffer?: Buffe
   const { error } = await resend.emails.send({
     from: FROM,
     to: order.customerEmail,
-    subject: `✅ Pedido confirmado #${order.id.slice(0, 8)} — Patitas Felices`,
+    subject: isCOD
+      ? `📦 Pedido Contra Entrega #${order.id.slice(0, 8)} — Patitas Felices`
+      : `✅ Pedido confirmado #${order.id.slice(0, 8)} — Patitas Felices`,
     html,
     attachments,
   });

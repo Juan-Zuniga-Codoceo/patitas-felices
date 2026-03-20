@@ -100,7 +100,8 @@ export async function POST(req: Request) {
                     provider: i.provider,
                 })),
             },
-            undefined // no PDF attachment for COD
+            undefined, // no PDF for COD
+            true       // isCOD → different email template
         ).catch(e => console.error("[COD] Email error:", e));
 
         return NextResponse.json({ orderId: order.id });

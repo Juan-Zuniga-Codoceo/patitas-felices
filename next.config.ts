@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://va.vercel-scripts.com https://http2.mlstatic.com https://*.mercadopago.com https://www.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.mercadopago.com https://www.clarity.ms https://*.vercel-scripts.com; frame-src 'self' https://*.mercadopago.com;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://va.vercel-scripts.com https://http2.mlstatic.com https://*.mercadopago.com https://www.clarity.ms; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.mercadopago.com https://api.mercadolibre.com https://*.mlstatic.com https://www.clarity.ms https://*.vercel-scripts.com; frame-src 'self' https://*.mercadopago.com;",
           },
           {
             key: "X-Frame-Options",
