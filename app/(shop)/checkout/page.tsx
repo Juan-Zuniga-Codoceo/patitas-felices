@@ -5,7 +5,7 @@ import { useCart } from "@/components/CartProvider";
 import { ComunaCombobox } from "@/components/ComunaCombobox";
 import { ZONE_FACTORS } from "@/lib/comunas";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, User, MapPin, Loader2, Package, Truck, ChevronRight, ArrowLeft } from "lucide-react";
+import { ShoppingBag, User, MapPin, Loader2, Package, Truck, ChevronRight, ArrowLeft, CreditCard, Banknote } from "lucide-react";
 import dynamic from "next/dynamic";
 import { NavBar } from "@/components/NavBar";
 
@@ -157,6 +157,10 @@ export default function CheckoutPage() {
     const [step, setStep] = useState<1 | 2>(1);
     const [globalError, setGlobalError] = useState<string | null>(null);
     const [orderId, setOrderId] = useState<string | null>(null);
+    const [paymentMethod, setPaymentMethod] = useState<"mp" | "cod">("mp");
+
+    // COD is available only when EVERY item in the cart allows it
+    const cartAllowsCOD = items.every(i => i.allowsCOD);
 
     const [form, setForm] = useState({
         customerName: "",
@@ -196,6 +200,11 @@ export default function CheckoutPage() {
         e.preventDefault();
         if (!validateStep1()) return;
 
+        // Route to COD flow if selected
+        if (paymentMethod === "cod" && cartAllowsCOD) {
+            return handleCODOrder(e);
+        }
+
         setCreatingOrder(true);
         setGlobalError(null);
 
@@ -226,6 +235,42 @@ export default function CheckoutPage() {
 
             setOrderId(data.orderId);
             setStep(2);
+        } catch (err: any) {
+            setGlobalError(err.message ?? "Error inesperado");
+        } finally {
+            setCreatingOrder(false);
+        }
+    };
+
+    // ── COD (Contra Entrega) ─────────────────────────────────────────────────────
+    const handleCODOrder = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validateStep1()) return;
+        setCreatingOrder(true);
+        setGlobalError(null);
+        try {
+            const payload = {
+                ...form,
+                shippingCost,
+                items: items.map(item => ({
+                    productId: item.id,
+                    productName: item.name,
+                    quantity: item.quantity,
+                    priceAtPurchase: item.price,
+                    selectedColor: undefined,
+                    providerId: item.provider === "Dropi" ? "p_dropi" : "p_ext",
+                    providerName: item.provider,
+                })),
+            };
+            const res = await fetch("/api/checkout/cod", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error ?? "Error creando la orden");
+            clearCart();
+            router.push(`/checkout/success?orderId=${data.orderId}&cod=true`);
         } catch (err: any) {
             setGlobalError(err.message ?? "Error inesperado");
         } finally {
@@ -359,14 +404,69 @@ export default function CheckoutPage() {
                                 </div>
                             </div>
 
+                            {/* ── Payment Method Selector ── */}
+                            {cartAllowsCOD && (
+                                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                                    <div className="flex items-center gap-3 mb-5">
+                                        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#263238" }}>
+                                            <CreditCard className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg font-black text-[#263238]">Método de Pago</h2>
+                                            <p className="text-xs text-gray-400">Elige cómo quieres pagar tu pedido</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {/* MercadoPago */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaymentMethod("mp")}
+                                            className={`p-4 rounded-xl border-2 transition-all text-left ${paymentMethod === "mp" ? "border-[#5FAFE3] bg-blue-50/40" : "border-gray-100 hover:border-gray-200"}`}
+                                        >
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <CreditCard className="w-5 h-5 text-[#5FAFE3]" />
+                                                <span className="font-bold text-[#263238] text-sm">Tarjeta / Transferencia</span>
+                                            </div>
+                                            <p className="text-xs text-gray-400">Paga ahora de forma segura con Mercado Pago</p>
+                                        </button>
+                                        {/* COD */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaymentMethod("cod")}
+                                            className={`p-4 rounded-xl border-2 transition-all text-left ${paymentMethod === "cod" ? "border-[#FF9800] bg-orange-50/40" : "border-gray-100 hover:border-gray-200"}`}
+                                        >
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <Banknote className="w-5 h-5 text-[#FF9800]" />
+                                                <span className="font-bold text-[#263238] text-sm">Contra Entrega</span>
+                                            </div>
+                                            <p className="text-xs text-gray-400">Paga en efectivo al recibir tu pedido en casa</p>
+                                        </button>
+                                    </div>
+                                    {paymentMethod === "cod" && (
+                                        <div className="mt-3 p-3 bg-orange-50 rounded-xl flex items-start gap-2">
+                                            <Banknote className="w-4 h-4 text-[#FF9800] mt-0.5 shrink-0" />
+                                            <p className="text-xs text-orange-700">
+                                                <b>Contra Entrega:</b> Ten el monto exacto listo al recibir. El repartidor confirmará tu pedido.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <button
                                 type="submit"
                                 disabled={creatingOrder}
                                 className="w-full py-4 rounded-2xl font-black text-white text-base shadow-lg hover:shadow-xl transition-all disabled:opacity-60 flex items-center justify-center gap-3"
-                                style={{ background: "linear-gradient(135deg, #FF9800, #f57c00)" }}
+                                style={{
+                                    background: paymentMethod === "cod" && cartAllowsCOD
+                                        ? "linear-gradient(135deg, #FF9800, #f57c00)"
+                                        : "linear-gradient(135deg, #5FAFE3, #3d8fc4)"
+                                }}
                             >
                                 {creatingOrder ? (
                                     <><Loader2 className="w-5 h-5 animate-spin" /> Preparando orden…</>
+                                ) : paymentMethod === "cod" && cartAllowsCOD ? (
+                                    <><Banknote className="w-5 h-5" /> Confirmar Contra Entrega <ChevronRight className="w-5 h-5" /></>
                                 ) : (
                                     <>Continuar al Pago <ChevronRight className="w-5 h-5" /></>
                                 )}

@@ -1,8 +1,8 @@
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.EMAIL_FROM ?? "Patitas Felices <hola@patitasfelices.cl>";
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://patitasfelices.cl";
+const FROM = process.env.EMAIL_FROM ?? "Patitas Felices <hola@mispatitasfelices.cl>";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.mispatitasfelices.cl";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 

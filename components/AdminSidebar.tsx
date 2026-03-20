@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { LayoutDashboard, Package, ShoppingCart, Building2, Settings, UserCircle } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Building2, Settings, UserCircle, Mail } from "lucide-react";
 import LogoutButton from "@/components/LogoutButton";
 import { GlobalSearch } from "@/components/admin/GlobalSearch";
 
@@ -11,6 +11,7 @@ const menuItems = [
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
     { label: "Productos", href: "/admin/products", icon: Package },
     { label: "Órdenes", href: "/admin/orders", icon: ShoppingCart },
+    { label: "Marketing", href: "/admin/marketing", icon: Mail },
     { label: "Proveedores", href: "/admin/providers", icon: Building2 },
     { label: "Configuración", href: "/admin/settings", icon: Settings },
     { label: "Mi Perfil", href: "/admin/profile", icon: UserCircle },

@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server";
-import { MercadoPagoConfig, Preference } from "mercadopago";
 import { prisma } from "@/lib/prisma";
+import { sendOrderConfirmation } from "@/lib/email";
 import { z } from "zod";
 
-const client = new MercadoPagoConfig({
-    accessToken: process.env.MP_ACCESS_TOKEN!,
-});
-
-const CheckoutSchema = z.object({
+const CODSchema = z.object({
     customerName: z.string().min(2),
     customerEmail: z.string().email(),
     customerRUT: z.string().min(9),
@@ -29,7 +25,7 @@ const CheckoutSchema = z.object({
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const parsed = CheckoutSchema.safeParse(body);
+        const parsed = CODSchema.safeParse(body);
 
         if (!parsed.success) {
             return NextResponse.json(
@@ -52,7 +48,7 @@ export async function POST(req: Request) {
             });
         }
 
-        // Create order in DB (pending)
+        // Create order with COD payment status
         const order = await prisma.order.create({
             data: {
                 customerName: data.customerName,
@@ -63,8 +59,8 @@ export async function POST(req: Request) {
                 comuna: data.comuna,
                 shippingCost: data.shippingCost,
                 totalPrice,
-                paymentStatus: "PENDING",
-                status: "CREATED",
+                paymentStatus: "COD",      // Cash on Delivery
+                status: "PROCESSING",       // Ready to dispatch
                 items: {
                     create: data.items.map(item => ({
                         productId: item.productId,
@@ -76,6 +72,7 @@ export async function POST(req: Request) {
                     })),
                 },
             },
+            include: { items: { include: { provider: true } } },
         });
 
         // Save customer email for marketing list
@@ -85,54 +82,30 @@ export async function POST(req: Request) {
             create: { email: data.customerEmail, name: data.customerName, source: "purchase" },
         });
 
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-
-        // Create Mercado Pago preference
-        const preference = new Preference(client);
-        const mpResponse = await preference.create({
-            body: {
-                external_reference: order.id,
-                payer: {
-                    name: data.customerName,
-                    email: data.customerEmail,
-                    phone: { number: data.customerPhone },
-                    address: { street_name: data.customerAddress },
-                },
-                items: [
-                    ...data.items.map(item => ({
-                        id: item.productId,
-                        title: item.productName,
-                        quantity: item.quantity,
-                        unit_price: item.priceAtPurchase,
-                        currency_id: "CLP",
-                    })),
-                    ...(data.shippingCost > 0
-                        ? [{ id: "shipping", title: "Costo de Envío", quantity: 1, unit_price: data.shippingCost, currency_id: "CLP" }]
-                        : []),
-                ],
-                back_urls: {
-                    success: `${baseUrl}/checkout/success?orderId=${order.id}`,
-                    failure: `${baseUrl}/checkout/failure?orderId=${order.id}`,
-                    pending: `${baseUrl}/checkout/success?orderId=${order.id}&pending=true`,
-                },
-                auto_return: "approved",
-                notification_url: `${baseUrl}/api/webhooks/mercado-pago`,
+        // Fire confirmation email (no PDF for COD, or we can still generate one)
+        await sendOrderConfirmation(
+            {
+                id: order.id,
+                customerName: order.customerName,
+                customerEmail: order.customerEmail,
+                customerAddress: order.customerAddress,
+                comuna: data.comuna,
+                totalPrice,
+                shippingCost: data.shippingCost,
+                items: order.items.map(i => ({
+                    productName: i.productName,
+                    quantity: i.quantity,
+                    priceAtPurchase: (i as any).priceAtPurchase ?? 0,
+                    selectedColor: (i as any).selectedColor ?? null,
+                    provider: i.provider,
+                })),
             },
-        });
+            undefined // no PDF attachment for COD
+        ).catch(e => console.error("[COD] Email error:", e));
 
-        // Save preference ID
-        await prisma.order.update({
-            where: { id: order.id },
-            data: { mpPreferenceId: mpResponse.id ?? null },
-        });
-
-        return NextResponse.json({
-            orderId: order.id,
-            init_point: mpResponse.init_point,
-            sandbox_init_point: mpResponse.sandbox_init_point,
-        });
+        return NextResponse.json({ orderId: order.id });
     } catch (error) {
-        console.error("[MP Checkout Error]", error);
-        return NextResponse.json({ error: "Error al procesar el pago" }, { status: 500 });
+        console.error("[COD Checkout Error]", error);
+        return NextResponse.json({ error: "Error al procesar la orden" }, { status: 500 });
     }
 }
