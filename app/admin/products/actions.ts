@@ -19,11 +19,14 @@ export type ProductPayload = {
     name: string;
     description: string;
     seoMetaDescription?: string;
+    seoTitle?: string;
+    seoKeywords?: string;
     category: string;
     providerType: "Dropi" | "External";
     allowsCOD: boolean;
     sku?: string;
     dropiId?: string;
+    externalLink?: string;
     imageUrl?: string;
     image?: string;
     costPrice: number;
@@ -64,9 +67,12 @@ export async function createProduct(data: ProductPayload) {
                     name: data.name,
                     description: data.description,
                     seoMetaDescription: data.seoMetaDescription || null,
+                    seoTitle: data.seoTitle || null,
+                    seoKeywords: data.seoKeywords || null,
                     category: data.category,
                     sku: data.sku || null,
                     dropiId: data.dropiId || null,
+                    externalLink: data.externalLink || null,
                     price: data.sellPrice,
                     providerId: pId,
                     allowsCOD: data.providerType === "Dropi" ? data.allowsCOD : false,

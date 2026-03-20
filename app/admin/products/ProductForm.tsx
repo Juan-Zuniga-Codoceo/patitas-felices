@@ -40,8 +40,11 @@ export type ProductFormInitialData = {
     allowsCOD?: boolean;
     sku?: string;
     dropiId?: string;
+    externalLink?: string;
     imageUrl?: string;
     seoMetaDescription?: string;
+    seoTitle?: string;
+    seoKeywords?: string;
     costPrice?: number;
     sellPrice?: number;
     weight?: number;
@@ -121,6 +124,8 @@ export default function ProductForm({ mode, initialData = {} }: Props) {
     const [seoMetaDescription, setSeoMetaDescription] = useState(initialData.seoMetaDescription ?? "");
     const [category, setCategory] = useState(initialData.category ?? "Dog");
     const [imagePreview, setImagePreview] = useState<string | null>(initialData.imageUrl ?? null);
+    const [seoTitle, setSeoTitle] = useState(initialData.seoTitle ?? "");
+    const [seoKeywords, setSeoKeywords] = useState(initialData.seoKeywords ?? "");
 
     // Multi‑imágenes
     const [imageUrls, setImageUrls] = useState<string[]>(
@@ -137,6 +142,7 @@ export default function ProductForm({ mode, initialData = {} }: Props) {
     const [allowsCOD, setAllowsCOD] = useState(initialData.allowsCOD ?? true);
     const [sku, setSku] = useState(initialData.sku ?? "");
     const [dropiId, setDropiId] = useState(initialData.dropiId ?? "");
+    const [externalLink, setExternalLink] = useState(initialData.externalLink ?? "");
 
     // Finanzas
     const [costPrice, setCostPrice] = useState(initialData.costPrice ?? 0);
@@ -243,9 +249,10 @@ export default function ProductForm({ mode, initialData = {} }: Props) {
         setLoading(true);
 
         const payload: ProductPayload = {
-            name, description, seoMetaDescription, category, providerType, allowsCOD,
+            name, description, seoMetaDescription, seoTitle, seoKeywords, category, providerType, allowsCOD,
             sku: sku || undefined,
             dropiId: dropiId || undefined,
+            externalLink: externalLink || undefined,
             imageUrl: imageUrls[0] || imagePreview || undefined,
             image: imagePreview || undefined,
             costPrice,
@@ -317,10 +324,26 @@ export default function ProductForm({ mode, initialData = {} }: Props) {
                                     <Textarea id="desc" value={description} onChange={e => setDescription(e.target.value)} placeholder="Beneficios, materiales, instrucciones…" className="rounded-xl min-h-[100px] resize-none" />
                                 </div>
                                 <div className="space-y-2">
+                                    <div className="flex justify-between items-end">
+                                        <Label htmlFor="seoTitle">SEO Meta Title <span className="text-[10px] text-gray-400 font-normal">(Opcional)</span></Label>
+                                        <span className={`text-[10px] font-bold tracking-wider ${seoTitle.length > 60 ? 'text-red-500' : seoTitle.length > 0 ? 'text-green-500' : 'text-gray-400'}`}>
+                                            {seoTitle.length}/60 car.
+                                        </span>
+                                    </div>
+                                    <Input id="seoTitle" value={seoTitle} onChange={e => setSeoTitle(e.target.value)} placeholder="Ej: Cama Ortopédica para Perros – Patitas Felices" className="rounded-xl" maxLength={70} />
+                                    <p className="text-[10px] text-gray-400">Se usa como título en Google. Ideal: 50–60 caracteres.</p>
+                                </div>
+                                <div className="space-y-2">
                                     <Label htmlFor="seoDesc" className="flex items-center gap-2">
                                         SEO Meta Description <span className="text-[10px] text-gray-400 font-normal">(Opcional)</span>
                                     </Label>
                                     <Textarea id="seoDesc" value={seoMetaDescription} onChange={e => setSeoMetaDescription(e.target.value)} placeholder="Descripción directa para Google (Si está vacío, usará la Descripción Larga)" className="rounded-xl min-h-[60px] resize-none" />
+                                    <p className="text-[10px] text-gray-400">Ideal: 120–160 caracteres. {seoMetaDescription.length} actuales.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="seoKeywords">Keywords SEO <span className="text-[10px] text-gray-400 font-normal">(Opcional)</span></Label>
+                                    <Input id="seoKeywords" value={seoKeywords} onChange={e => setSeoKeywords(e.target.value)} placeholder="cama perro, cama ortopédica, mascotas" className="rounded-xl" />
+                                    <p className="text-[10px] text-gray-400">Separadas por coma. Usadas internamente para análisis.</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Categoría</Label>
@@ -418,6 +441,20 @@ export default function ProductForm({ mode, initialData = {} }: Props) {
                                         <Input id="dropiId" value={dropiId} onChange={e => setDropiId(e.target.value)} placeholder="dp_8x9a2" className="rounded-xl" disabled={providerType !== "Dropi"} />
                                     </div>
                                 </div>
+                                {providerType === "External" && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="externalLink">Link del Proveedor</Label>
+                                        <Input
+                                            id="externalLink"
+                                            type="url"
+                                            value={externalLink}
+                                            onChange={e => setExternalLink(e.target.value)}
+                                            placeholder="https://proveedor.com/producto/123"
+                                            className="rounded-xl"
+                                        />
+                                        <p className="text-[10px] text-gray-400">URL directa al producto en el sitio del proveedor externo.</p>
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <Label>Pago Contra Entrega (COD)</Label>

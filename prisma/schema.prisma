@@ -40,6 +40,8 @@ model Product {
   name               String
   description        String?
   seoMetaDescription String?
+  seoTitle           String?
+  seoKeywords        String?
   price              Float
   imageUrl    String?
   image       String?
@@ -49,6 +51,7 @@ model Product {
   providerType String  @default("Dropi") // Dropi | External
   sku         String?
   dropiId     String?
+  externalLink String?
   category    String   @default("Dog") // Dog | Cat | Both
   costPrice   Float?
   sellPrice   Float?
