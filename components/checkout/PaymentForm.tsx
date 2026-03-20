@@ -307,7 +307,6 @@ export function PaymentForm({ orderId, totalPrice, email, identificationNumber, 
                             onChange={handleExpiry}
                             maxLength={5}
                             error={errors.expiry}
-                            data-checkout="cardExpirationMonth"
                             autoComplete="cc-exp"
                         />
                         <FormInput
