@@ -160,11 +160,22 @@ export async function POST(req: Request) {
             paymentId: mpPayment.id,
         });
     } catch (error: any) {
-        console.error("[process-payment error]", error);
-        // Forward MP error response if available
-        const mpCause = error?.cause?.[0]?.description ?? null;
+        // Log the full MP error to Vercel logs for debugging
+        console.error("[process-payment] Full error:", JSON.stringify({
+            message: error?.message,
+            status: error?.status,
+            cause: error?.cause,
+            error: error?.error,
+        }, null, 2));
+
+        // Forward MP error details if available
+        const mpCause = error?.cause?.[0]?.description
+            ?? error?.error
+            ?? error?.message
+            ?? "Error procesando el pago. Intenta nuevamente.";
+
         return NextResponse.json(
-            { error: mpCause ?? "Error procesando el pago. Intenta nuevamente." },
+            { error: mpCause },
             { status: 500 }
         );
     }
