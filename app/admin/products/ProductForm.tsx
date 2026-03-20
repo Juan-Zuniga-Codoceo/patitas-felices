@@ -215,23 +215,20 @@ export default function ProductForm({ mode, initialData = {} }: Props) {
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            try {
-                // Notificar al usuario que estamos procesando
-                setToast({ type: "success", message: "Optimizando imagen..." });
-
-                const dataUrl = await compressImage(file);
-
-                setImagePreview(dataUrl);
-                setImageUrls(prev => [dataUrl, ...prev.filter(u => !u.startsWith("data:"))]);
-
-                setToast(null); // Quitar el toast de carga
-            } catch (error) {
-                console.error("Error comprimiendo imagen:", error);
-                showToast("error", "Error al procesar la imagen.");
-            }
+        const files = Array.from(e.target.files ?? []);
+        if (files.length === 0) return;
+        setToast({ type: "success", message: `Optimizando ${files.length} imagen(es)...` });
+        try {
+            const compressed = await Promise.all(files.map(compressImage));
+            setImageUrls(prev => [...prev, ...compressed]);
+            setImagePreview(compressed[0]);
+            setToast(null);
+        } catch (error) {
+            console.error("Error comprimiendo imagen:", error);
+            showToast("error", "Error al procesar las imágenes.");
         }
+        // Reset input so same file can be added again
+        e.target.value = "";
     };
 
     // ─── Toast ────────────────────────────────────────────────────────────────
@@ -348,11 +345,12 @@ export default function ProductForm({ mode, initialData = {} }: Props) {
                                 <CardDescription>La primera imagen será la principal del catálogo</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {/* Dropzone */}
+                                {/* Dropzone — acepta múltiples imágenes */}
                                 <label className="block cursor-pointer text-center rounded-xl border-2 border-dashed border-gray-200 px-4 py-5 hover:border-[#5FAFE3] hover:bg-blue-50/20 transition-all group">
                                     <ImagePlus className="h-8 w-8 text-gray-300 group-hover:text-[#5FAFE3] mx-auto mb-2 transition-colors" />
-                                    <p className="text-sm text-gray-400 group-hover:text-[#5FAFE3] transition-colors">Subir desde dispositivo (preview local)</p>
-                                    <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                                    <p className="text-sm font-semibold text-gray-500 group-hover:text-[#5FAFE3] transition-colors">Subir imágenes desde dispositivo</p>
+                                    <p className="text-xs text-gray-400 mt-1">Puedes seleccionar varias a la vez · Se añaden a la galería</p>
+                                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileUpload} />
                                 </label>
 
                                 {/* Agregar por URL */}

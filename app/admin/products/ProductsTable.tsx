@@ -225,7 +225,15 @@ export default function ProductsTable({ products }: { products: Product[] }) {
                                             </div>
                                         </td>
                                         <td className="px-5 py-3">
-                                            <p className="font-semibold text-[#263238] line-clamp-1">{product.name}</p>
+                                            <a
+                                                href={`https://www.mispatitasfelices.cl/product/${product.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="font-semibold text-[#263238] line-clamp-1 hover:text-[#5FAFE3] hover:underline transition-colors"
+                                                title="Ver en tienda"
+                                            >
+                                                {product.name}
+                                            </a>
                                         </td>
                                         <td className="px-5 py-3 text-gray-500 font-mono text-xs">
                                             {product.sku || <span className="text-gray-300">—</span>}
