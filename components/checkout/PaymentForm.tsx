@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { CreditCard, Loader2, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 
 // ─── Card brand detection ─────────────────────────────────────────────────────
@@ -49,8 +49,18 @@ type Props = {
     onError: (msg: string) => void;
 };
 
+type CardTokenInput = {
+    cardNumber: string;
+    cardExpirationMonth: string;
+    cardExpirationYear: string;
+    securityCode: string;
+    cardholderName: string;
+    identificationType: string;
+    identificationNumber: string;
+};
+
 type MercadoPago = {
-    createCardToken: (form: HTMLFormElement) => Promise<{ id: string; luhn_validation: boolean }>;
+    createCardToken: (data: CardTokenInput) => Promise<{ id: string; luhn_validation: boolean }>;
     getPaymentMethods: (opts: { bin: string }) => Promise<{ results: { id: string; issuer: { id: string } }[] }>;
 };
 
@@ -93,7 +103,6 @@ function FormInput({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function PaymentForm({ orderId, totalPrice, email, identificationNumber, onSuccess, onError }: Props) {
-    const formRef = useRef<HTMLFormElement>(null);
     const [mpReady, setMpReady] = useState(false);
     const [mp, setMp] = useState<MercadoPago | null>(null);
 
@@ -181,21 +190,29 @@ export function PaymentForm({ orderId, totalPrice, email, identificationNumber, 
     // ── Submit ─────────────────────────────────────────────────────────────────
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!mp || !formRef.current) return;
+        if (!mp) return;
         if (!validate()) return;
 
         setLoading(true);
         setErrors({});
 
         try {
-            // Tokenize card via MP SDK
-            const tokenResult = await mp.createCardToken(formRef.current);
+            const [expiryMonth, expiryYear] = card.expiry.split("/");
+
+            // ── Tokenize using object-based API (v2 SDK) ──────────────────────
+            const tokenResult = await mp.createCardToken({
+                cardNumber: card.number.replace(/\s/g, ""),
+                cardExpirationMonth: expiryMonth,
+                cardExpirationYear: "20" + expiryYear,
+                securityCode: card.cvv,
+                cardholderName: card.holderName,
+                identificationType: "RUT",
+                identificationNumber: identificationNumber.replace(/[.\-]/g, ""),
+            });
 
             if (!tokenResult?.id) {
                 throw new Error("No se pudo tokenizar la tarjeta. Verifica los datos e intenta nuevamente.");
             }
-
-            const [expiryMonth, expiryYear] = card.expiry.split("/");
 
             const res = await fetch("/api/checkout/process-payment", {
                 method: "POST",
@@ -222,7 +239,7 @@ export function PaymentForm({ orderId, totalPrice, email, identificationNumber, 
                 setSuccess(true);
                 setTimeout(() => onSuccess(orderId), 1200);
             } else if (data.status === "pending" || data.status === "in_process") {
-                onSuccess(orderId); // treat as success, redirect to pending state
+                onSuccess(orderId);
             } else {
                 throw new Error(
                     data.statusDetail === "cc_rejected_insufficient_amount"
@@ -280,7 +297,7 @@ export function PaymentForm({ orderId, totalPrice, email, identificationNumber, 
                     <Loader2 className="w-4 h-4 animate-spin" />Cargando formulario seguro…
                 </div>
             ) : (
-                <form ref={formRef} onSubmit={handleSubmit} className="space-y-4" id="mp-card-form">
+                <form onSubmit={handleSubmit} className="space-y-4" id="mp-card-form">
                     {/* Card Number */}
                     <FormInput
                         label="Número de tarjeta *"
@@ -339,12 +356,6 @@ export function PaymentForm({ orderId, totalPrice, email, identificationNumber, 
                         data-checkout="cardholderName"
                         autoComplete="cc-name"
                     />
-
-                    {/* Hidden MP fields for expiry split */}
-                    <input type="hidden" data-checkout="cardExpirationMonth" value={card.expiry.split("/")[0] ?? ""} />
-                    <input type="hidden" data-checkout="cardExpirationYear" value={"20" + (card.expiry.split("/")[1] ?? "")} />
-                    <input type="hidden" data-checkout="docType" value="RUT" />
-                    <input type="hidden" data-checkout="docNumber" value={identificationNumber.replace(/[.\-]/g, "")} />
 
                     {/* Visual card preview */}
                     <div
