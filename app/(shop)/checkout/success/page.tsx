@@ -56,7 +56,7 @@ export default async function CheckoutSuccessPage({
 
             {/* ── Header — extra pb so overlapping card has breathing room */}
             <div
-                className="relative pt-14 pb-24 px-4 text-center text-white overflow-hidden"
+                className="relative pt-14 pb-10 px-4 text-center text-white overflow-hidden"
                 style={{ background: headerBg }}
             >
                 <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -82,7 +82,7 @@ export default async function CheckoutSuccessPage({
                 </div>
             </div>
 
-            <main className="max-w-xl mx-auto px-4 -mt-10 pb-16 space-y-4">
+            <main className="max-w-xl mx-auto px-4 pt-6 pb-16 space-y-4">
 
                 {/* ── COD Money Alert */}
                 {isCOD && (
